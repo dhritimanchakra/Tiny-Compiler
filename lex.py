@@ -19,7 +19,7 @@ class Lexer:
     def abort(self,message):
         sys.exit("Lexing error"+message)
     def getToken(self):
-        self.skipWhiteSpace()
+        self.skipWhitespace()
         self.skipComment()
         token=None
         if self.curChar=="+":
@@ -27,12 +27,12 @@ class Lexer:
         elif self.curChar=="-":
             token=Token(self.curChar,TokenType.MINUS)
         elif self.curChar=="*":
-            token=Token(self.charChar,TokenType.ASTERISK)
+            token=Token(self.curChar,TokenType.ASTERISK)
         elif self.curChar=="/":
             token=Token(self.curChar,TokenType.SLASH)
         elif self.curChar=="=":
             if self.peek()=="=":
-                lastChar=self.curChar
+                lastChar=self.curChar()
                 self.nextChar()
                 token = Token(lastChar + self.curChar, TokenType.EQEQ)
             else:
@@ -41,7 +41,7 @@ class Lexer:
             if self.peek()=="=":
                 lastChar=self.curChar
                 self.nextChar()
-                token=Token(lastChar+self.curChar,TokenType.GETQ)
+                token=Token(lastChar+self.curChar,TokenType.GTEQ)
             else:
                 token=Token(self.curChar,TokenType.GT)
         elif self.curChar=="<":
@@ -71,3 +71,88 @@ class Lexer:
 
             tokText = self.source[startPos : self.curPos] # Get the substring.
             token = Token(tokText, TokenType.STRING)
+        elif self.curChar.isdigit():
+            startPos=self.curPos
+            while self.peek().isdigit():
+                self.nextChar()
+            if self.peek()==".":
+                self.nextChar()
+                if not self.peek().isdigit():
+                    self.abort("Illegal character in number")
+                while self.peek().isdigit():
+                    self.nextChar()
+            tokText = self.source[startPos : self.curPos + 1] 
+            token = Token(tokText, TokenType.NUMBER)
+
+        elif self.curChar.isalpha():
+            startPos=self.curPos
+            while self.peek().isalnum():
+                self.nextChar()
+            tokText=self.source[startPos:self.curPos+1]
+            keyword=Token.checkIfKeyword(tokText)
+            if keyword==None:
+                token=Token(tokText,TokenType.IDENT)
+            else:
+                token=Token(tokText,keyword)
+        elif self.curChar=="\n":
+            token=Token("\n",TokenType.NEWLINE)
+        elif self.curChar=="\0":
+            token=Token("",TokenType.EOF)
+        else:
+            self.abort("UNkonw token"+self.curChar)
+
+        self.nextChar()
+        return token
+    
+    def skipWhitespace(self):
+        while self.curChar == ' ' or self.curChar == '\t' or self.curChar == '\r':
+            self.nextChar()
+
+    def skipComment(self):
+        if self.curChar == '#':
+            while self.curChar != '\n':
+                self.nextChar()
+
+
+class Token:
+    def __init__(self,tokenText,tokenKind):
+        self.text=tokenText
+        self.kind=tokenKind
+
+    @staticmethod
+    def checkIfKeyword(tokenText):
+        for i in TokenType:
+            if i.name==tokenText and i.value>=100 and i.value<200:
+                return i
+            
+        return None
+class TokenType(enum.Enum):
+    EOF = -1
+    NEWLINE = 0
+    NUMBER = 1
+    IDENT = 2
+    STRING = 3
+    # Keywords.
+    LABEL = 101
+    GOTO = 102
+    PRINT = 103
+    INPUT = 104
+    LET = 105
+    IF = 106
+    THEN = 107
+    ENDIF = 108
+    WHILE = 109
+    REPEAT = 110
+    ENDWHILE = 111
+    # Operators.
+    EQ = 201  
+    PLUS = 202
+    MINUS = 203
+    ASTERISK = 204
+    SLASH = 205
+    EQEQ = 206
+    NOTEQ = 207
+    LT = 208
+    LTEQ = 209
+    GT = 210
+    GTEQ = 211
