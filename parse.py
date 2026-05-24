@@ -70,4 +70,101 @@ class Parser:
 
         elif self.checkToken(TokenType.WHILE):
             self.nextToken()
-            self.
+            self.emitter.emit("while(")
+            self.comparison()
+
+            self.match(TokenType.REPEAT)
+            self.nl()
+            self.emitter.emitLine("){")
+            while not self.checkToken(TokenType.ENDWHILE):
+                self.statement()
+            self.match(TokenType.ENDWHILE)
+            self.emitter.emitLine("}")
+        elif self.checkToken(TokenType.LABEL):
+            self.nextToken()
+            if self.curToken.text in self.labelsDeclared:
+                self.abort("Label already exists: " + self.curToken.text)
+            self.labelsDeclared.add(self.curToken.text)
+
+            self.emitter.emitLine(self.curToken.text + ":")
+            self.match(TokenType.IDENT)
+        elif self.checkToken(TokenType.GOTO):
+            self.nextToken()
+            self.labelsGotoed.add(self.curToken.text)
+            self.emitter.emitLine("goto " + self.curToken.text + ";")
+            self.match(TokenType.IDENT)
+        elif self.checkToken(TokenType.LET):
+            self.nextToken()
+            if self.curToken.text not in self.symbols:
+                self.symbols.add(self.curToken.text)
+                self.emitter.headerLine("float " + self.curToken.text + ";")
+            self.emitter.emit(self.curToken.text+"=")
+            self.match(TokenType.IDENT)
+            self.match(TokenType.EQ)
+            self.expression()
+            self.emitter.emitLine(";")
+        elif self.checkToken(TokenType.INPUT):
+            self.nextToken()
+            if self.curToken.text not in self.symbols:
+                self.symbols.add(self.curToken.text)
+                self.emitter.headerLine("float "+self.curToken.text+";")
+            self.emitter.emitLine("if(0 == scanf(\"%" + "f\", &" + self.curToken.text + ")) {")
+            self.emitter.emitLine(self.curToken.text + " = 0;")
+            self.emitter.emit("scanf(\"%")
+            self.emitter.emitLine("*s\");")
+            self.emitter.emitLine("}")
+            self.match(TokenType.IDENT)
+        else:
+            self.abort("Invalid statement at " + self.curToken.text + " (" + self.curToken.kind.name + ")")
+        self.nl()
+
+    def comparison(self):
+        self.expression()
+        if self.isComparisonOperator():
+            self.emitter.emit(self.curToken.text)
+            self.nextToken()
+            self.expression()
+        # Can have 0 or more comparison operator and expressions.
+        while self.isComparisonOperator():
+            self.emitter.emit(self.curToken.text)
+            self.nextToken()
+            self.expression()
+
+    def expression(self):
+        self.term()
+        # Can have 0 or more +/- and expressions.
+        while self.checkToken(TokenType.PLUS) or self.checkToken(TokenType.MINUS):
+            self.emitter.emit(self.curToken.text)
+            self.nextToken()
+            self.term()
+
+
+    def term(self):
+        self.unary()
+        while self.checkToken(TokenType.ASTERISK) or self.checkToken(TokenType.SLASH):
+            self.emitter.emit(self.curToken.text)
+            self.nextToken()
+            self.unary()
+    def unary(self):
+        # Optional unary +/-
+        if self.checkToken(TokenType.PLUS) or self.checkToken(TokenType.MINUS):
+            self.emitter.emit(self.curToken.text)
+            self.nextToken()        
+        self.primary()
+    def primary(self):
+        if self.checkToken(TokenType.NUMBER):
+            self.emitter.emit(self.curToken.text)
+            self.nextToken()
+        elif self.checkToken(TokenType.IDENT):
+            if self.curToken.text not in self.symbols:
+                self.abort("Referencing variable before assignment: " + self.curToken.text)
+            self.emitter.emit(self.curToken.text)
+            self.nextToken()
+        else:
+            self.abort("Unexpected token at"+self.curToken.text)
+    def nl(self):
+        
+        self.match(TokenType.NEWLINE)
+        # But we will allow extra newlines too, of course.
+        while self.checkToken(TokenType.NEWLINE):
+            self.nextToken()
