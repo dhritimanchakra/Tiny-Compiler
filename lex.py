@@ -32,7 +32,7 @@ class Lexer:
             token=Token(self.curChar,TokenType.SLASH)
         elif self.curChar=="=":
             if self.peek()=="=":
-                lastChar=self.curChar()
+                lastChar=self.curChar
                 self.nextChar()
                 token = Token(lastChar + self.curChar, TokenType.EQEQ)
             else:
